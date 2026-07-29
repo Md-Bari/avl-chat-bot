@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVL Group - AI Chat Assistant</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Vanilla CSS Custom Design -->
+    <style>
+        :root {
+            --bg-color: #080914;
+            --card-bg: rgba(19, 23, 47, 0.7);
+            --card-border: rgba(139, 92, 246, 0.15);
+            --card-border-hover: rgba(6, 182, 212, 0.4);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --secondary-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --sidebar-width: 350px;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated Ambient Background Blobs */
+        .ambient-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            animation: pulse-ambient 15s infinite alternate;
+        }
+
+        .blob-1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(99, 102, 241, 0.35);
+            top: -100px;
+            right: 10%;
+        }
+
+        .blob-2 {
+            width: 500px;
+            height: 500px;
+            background: rgba(6, 182, 212, 0.25);
+            bottom: -150px;
+            left: 5%;
+            animation-delay: 5s;
+        }
+
+        @keyframes pulse-ambient {
+            0% {
+                transform: scale(1) translate(0, 0);
+            }
+            100% {
+                transform: scale(1.2) translate(50px, 30px);
+            }
+        }
+
+        /* Layout Grid */
+        .app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(11, 13, 28, 0.85);
+            border-right: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 2;
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(to right, #fff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Scrollable Sidebar Content */
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding-right: 4px;
+        }
+
+        /* Scrollbar styles */
+        .sidebar-content::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover,
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Widgets styling */
+        .widget {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .widget:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .widget-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Scraper Status Widget */
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-badge.online {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-badge.scraping {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            animation: pulse-orange 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-orange {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; box-shadow: 0 0 10px rgba(245,158,11,0.2); }
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            display: inline-block;
+        }
+
+        .status-indicator.pulse {
+            animation: blink-dot 1.2s infinite;
+        }
+
+        @keyframes blink-dot {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .status-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .status-info span {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* Scrape Action Button */
+        .btn-scrape {
+            width: 100%;
+            margin-top: 16px;
+            padding: 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--card-border-hover);
+            background: transparent;
+            color: var(--text-main);
+            font-family: var(--font-family);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-scrape:hover:not(:disabled) {
+            background: var(--secondary-gradient);
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-scrape:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Suggestions List */
+        .suggestion-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .suggestion-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: var(--text-main);
+            transform: translateX(4px);
+        }
+
+        /* Footer in Sidebar */
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .sidebar-footer a:hover {
+            color: #a855f7;
+        }
+
+        /* Main Chat Window */
+        .chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: rgba(8, 9, 20, 0.8);
+            z-index: 2;
+        }
+
+        .chat-header {
+            height: 80px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            backdrop-filter: blur(20px);
+            background: rgba(11, 13, 28, 0.4);
+        }
+
+        .chat-header-info h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chat-header-info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-link-swagger {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-link-swagger:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        /* Chat Log Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Message Bubbles layout */
+        .message-row {
+            display: flex;
+            width: 100%;
+            animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slide-in {
+            0% {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.bot {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: var(--radius-lg);
+            font-size: 14px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .message-row.user .message-bubble {
+            background: var(--primary-gradient);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
+        }
+
+        .message-row.bot .message-bubble {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Inside markdown elements formatting */
+        .message-bubble p {
+            margin-bottom: 10px;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble ul, .message-bubble ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .message-bubble li {
+            margin-bottom: 4px;
+        }
+
+        .message-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+
+        .message-bubble th, .message-bubble td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        .message-bubble th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+        }
+
+        /* Message timestamp */
+        .message-time {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 6px;
+            text-align: right;
+            display: block;
+        }
+
+        .message-row.bot .message-time {
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        /* Welcome Dialog Card when history is empty */
+        .welcome-card {
+            max-width: 550px;
+            margin: auto;
+            text-align: center;
+            padding: 40px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            animation: fade-in 0.6s ease;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .welcome-card i {
+            font-size: 48px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .welcome-card h3 {
+            font-size: 22px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .welcome-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .welcome-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .feature-box {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 14px;
+            border-radius: var(--radius-md);
+        }
+
+        .feature-box h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feature-box h4 i {
+            font-size: 12px;
+            margin-bottom: 0;
+        }
+
+        .feature-box p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            line-height: 1.4;
+        }
+
+        /* Typing Indicator dots */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+            animation: bounce-dot 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce-dot {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Input Controls Panel */
+        .chat-input-panel {
+            padding: 24px 32px 32px 32px;
+            backdrop-filter: blur(20px);
+            background: rgba(8, 9, 20, 0.9);
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 8px 12px 8px 20px;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-container:focus-within {
+            border-color: rgba(99, 102, 241, 0.6);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-family: var(--font-family);
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        .chat-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-send {
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            background: var(--primary-gradient);
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Responsive styling */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none; /* Hide sidebar on small tablet/mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient glowing backgrounds -->
+    <div class="ambient-blob blob-1"></div>
+    <div class="ambient-blob blob-2"></div>
+
+    <div class="app-container">
+        
+        <!-- Sidebar Panel -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>AVL Assistant</h1>
+                    <p>Apparels Village Ltd.</p>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                
+                <!-- Database Scraper Widget -->
+                <div class="widget">
+                    <div class="widget-title">
+                        <i class="fa-solid fa-database"></i> Database Status
+                    </div>
+                    <div class="status-header">
+                        <span class="status-info">Sync Status:</span>
+                        <span id="scraper-badge" class="status-badge online">
+                            <span class="status-indicator"></span> Idle
+                        </span>
+                    </div>
+                    <div class="status-info">
+                        Pages Loaded: <span id="pages-count">0</span><br>
+                        Last Scraped: <span id="last-updated">Never</span>
+                    </div>
+                    <button id="btn-scrape-trigger" class="btn-scrape">
+                        <i class="fa-solid fa-arrows-rotate"></i> Re-scrape Website
+                    </button>
+                </div>
+                
+                <!-- Quick Prompts Suggestions Widget -->
+                <div class="widget">
+                    <div class="widget-title">
+                        <i class="fa-solid fa-circle-question"></i> Recommended Queries
+                    </div>
+                    <div class="suggestion-list">
+                        <button class="suggestion-item" onclick="sendSuggestion('What is Apparels Village Limited (AVL) and when was it founded?')">
+                            What is Apparels Village Limited (AVL) and when was it founded?
+                        </button>
+                        <button class="suggestion-item" onclick="sendSuggestion('What are the production capacities for Knit and Woven units?')">
+                            What are the production capacities for Knit and Woven units?
+                        </button>
+                        <button class="suggestion-item" onclick="sendSuggestion('List the certifications and memberships held by AVL.')">
+                            List the certifications and memberships held by AVL.
+                        </button>
+                        <button class="suggestion-item" onclick="sendSuggestion('Who are the key contact persons for Marketing and Operations?')">
+                            Who are the key contact persons for Marketing and Operations?
+                        </button>
+                        <button class="suggestion-item" onclick="sendSuggestion('Tell me about the wastewater treatment plant (ETP) capacity and technology.')">
+                            Tell me about the wastewater treatment plant (ETP) capacity and technology.
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="sidebar-footer">
+                <div>AVL Group Chatbot API Dashboard</div>
+                <div><a href="/api/docs/" target="_blank"><i class="fa-solid fa-code"></i> Interactive Swagger Docs</a></div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Panel -->
+        <main class="chat-window">
+            
+            <!-- Chat Window Header -->
+            <header class="chat-header">
+                <div class="chat-header-info">
+                    <h2>Customer Assistant</h2>
+                    <p>AI Agent powered by AVL website data</p>
+                </div>
+                <div class="header-actions">
+                    <a href="/api/docs/" class="btn-link-swagger" target="_blank">
+                        <i class="fa-solid fa-file-lines"></i> API Check
+                    </a>
+                </div>
+            </header>
+            
+            <!-- Messages Log -->
+            <div class="chat-messages" id="chat-messages">
+                <!-- Welcome greeting card if there are no messages -->
+                <div class="welcome-card" id="welcome-card">
+                    <i class="fa-solid fa-comments"></i>
+                    <h3>Welcome to AVL Chatbot!</h3>
+                    <p>I am an intelligent assistant built using scraped data directly from the official AVL Group portal. Ask me anything about our company history, production capacities, machinery directories, compliance certifications, or contact details.</p>
+                    <div class="welcome-features">
+                        <div class="feature-box">
+                            <h4><i class="fa-solid fa-check-double"></i> Factual Answers</h4>
+                            <p>All responses are verified and extracted directly from avl.com.bd pages.</p>
+                        </div>
+                        <div class="feature-box">
+                            <h4><i class="fa-solid fa-gears"></i> Technical Specs</h4>
+                            <p>I have detailed metrics on factory floor areas, machines count, and operations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Typing Indicator (Hidden by default) -->
+            <div class="message-row bot" id="typing-row" style="display: none; padding: 0 32px; margin-bottom: 12px;">
+                <div class="message-bubble">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message Input Panel -->
+            <footer class="chat-input-panel">
+                <form id="chat-form" onsubmit="handleChatSubmit(event)">
+                    <div class="input-container">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Type your query here (e.g. What is the address of the factory?)..." autocomplete="off">
+                        <button type="submit" id="btn-submit" class="btn-send">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </footer>
+            
+        </main>
+        
+    </div>
+
+    <!-- Scripting for API Calls and UI Logic -->
+    <script>
+        let currentSessionId = '';
+        let isScrapingActive = false;
+
+        // On Page Load
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchDatabaseStatus();
+            // Poll database status periodically
+            setInterval(fetchDatabaseStatus, 6000);
+        });
+
+        // Fetch DB Status
+        async function fetchDatabaseStatus() {
+            try {
+                const response = await fetch('/api/status/');
+                const data = await response.json();
+                
+                document.getElementById('pages-count').innerText = data.total_pages;
+                
+                if (data.last_updated) {
+                    const date = new Date(data.last_updated);
+                    document.getElementById('last-updated').innerText = date.toLocaleString();
+                } else {
+                    document.getElementById('last-updated').innerText = 'Never';
+                }
+
+                updateScraperBadge(data.is_scraping);
+            } catch (err) {
+                console.error("Error fetching database status:", err);
+            }
+        }
+
+        // Update scraper badge interface
+        function updateScraperBadge(isScraping) {
+            const badge = document.getElementById('scraper-badge');
+            const btn = document.getElementById('btn-scrape-trigger');
+            isScrapingActive = isScraping;
+
+            if (isScraping) {
+                badge.className = 'status-badge scraping';
+                badge.innerHTML = '<span class="status-indicator pulse"></span> Scraping...';
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Crawling Site...';
+            } else {
+                badge.className = 'status-badge online';
+                badge.innerHTML = '<span class="status-indicator"></span> Idle';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Re-scrape Website';
+            }
+        }
+
+        // Trigger Scrape Request
+        document.getElementById('btn-scrape-trigger').addEventListener('click', async () => {
+            if (isScrapingActive) return;
+            
+            try {
+                updateScraperBadge(true);
+                const response = await fetch('/api/scrape/', { method: 'POST' });
+                const result = await response.json();
+                
+                // Show notification in chat log
+                appendSystemMessage("Scraping started. Discovering and crawling all avl.com.bd pages...");
+            } catch (err) {
+                console.error("Error triggering scrape:", err);
+                appendSystemMessage("Failed to start scraping. Check terminal logs.");
+                updateScraperBadge(false);
+            }
+        });
+
+        // Simple Markdown-to-HTML parser for basic formatting returned by model
+        function parseMarkdown(text) {
+            // Escape HTML entities to prevent XSS
+            let html = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+            
+            // Format tables
+            const lines = html.split('\n');
+            let inTable = false;
+            let tableHtml = '';
+            let rows = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('|')) {
+                    if (!inTable) {
+                        inTable = true;
+                        rows = [];
+                    }
+                    rows.push(line);
+                } else {
+                    if (inTable) {
+                        // Render full table
+                        tableHtml = renderMarkdownTable(rows);
+                        html = html.replace(rows.join('\n'), tableHtml);
+                        inTable = false;
+                    }
+                }
+            }
+            if (inTable) {
+                tableHtml = renderMarkdownTable(rows);
+                html = html.replace(rows.join('\n'), tableHtml);
+            }
+
+            // Headers
+            html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+            
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Bullet points
+            html = html.replace(/^\s*-\s+(.*?)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+            // Clean consecutive lists
+            html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+            // Line breaks
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+
+        // Helper to render MD tables to HTML tables
+        function renderMarkdownTable(rows) {
+            let html = '<table>';
+            rows.forEach((row, index) => {
+                // Split row elements
+                const cols = row.split('|').map(c => c.trim()).filter((c, i, arr) => i > 0 && i < arr.length - 1);
+                
+                // Skip separator rows like |---|---|
+                if (cols.every(c => c.match(/^:-*-?:*$/) || c.match(/^-+$/))) {
+                    return;
+                }
+
+                html += '<tr>';
+                cols.forEach(col => {
+                    const tag = index === 0 ? 'th' : 'td';
+                    html += `<${tag}>${col}</${tag}>`;
+                });
+                html += '</tr>';
+            });
+            html += '</table>';
+            return html;
+        }
+
+        // Helper to add system messages (like scraper notifications) inside chat log
+        function appendSystemMessage(text) {
+            const chatLog = document.getElementById('chat-messages');
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = 'text-align: center; margin: 12px 0; font-size: 11px; color: var(--text-secondary); background: rgba(255,255,255,0.03); padding: 8px; border-radius: var(--radius-sm); border: 1px dashed rgba(255,255,255,0.05);';
+            alertDiv.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${text}`;
+            chatLog.appendChild(alertDiv);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        // Append regular Chat Message row (user/bot)
+        function appendChatMessage(role, text) {
+            // Hide welcome card if present
+            const welcomeCard = document.getElementById('welcome-card');
+            if (welcomeCard) welcomeCard.style.display = 'none';
+
+            const chatLog = document.getElementById('chat-messages');
+            
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${role}`;
+            
+            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const parsedContent = role === 'bot' ? parseMarkdown(text) : text;
+            
+            messageRow.innerHTML = `
+                <div class="message-bubble">
+                    <div>${parsedContent}</div>
+                    <span class="message-time">${timeString}</span>
+                </div>
+            `;
+            
+            chatLog.appendChild(messageRow);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        // Handle Chat Form Submit
+        async function handleChatSubmit(e) {
+            if (e) e.preventDefault();
+            
+            const input = document.getElementById('chat-input');
+            const query = input.value.trim();
+            if (!query) return;
+            
+            // Clear input
+            input.value = '';
+            
+            // Disable submit controls
+            document.getElementById('btn-submit').disabled = true;
+            document.getElementById('chat-input').disabled = true;
+            
+            // Render user bubble
+            appendChatMessage('user', query);
+            
+            // Show typing dots loader
+            const typingRow = document.getElementById('typing-row');
+            typingRow.style.display = 'flex';
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+
+            let botBubbleElement = null;
+            let rawBotResponse = "";
+
+            try {
+                const response = await fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        session_id: currentSessionId
+                    })
+                });
+                
+                if (!response.ok) {
+                    typingRow.style.display = 'none';
+                    const errText = await response.text();
+                    let errMsg = errText;
+                    try { errMsg = JSON.parse(errText).error || errText; } catch(e){}
+                    appendChatMessage('bot', `Error: ${errMsg}`);
+                    return;
+                }
+                
+                // Hide loader once stream starts receiving
+                typingRow.style.display = 'none';
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Hold onto partial line
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data:')) {
+                            const jsonStr = trimmed.substring(5).trim();
+                            try {
+                                const data = JSON.parse(jsonStr);
+                                if (data.error) {
+                                    if (botBubbleElement) {
+                                        botBubbleElement.innerHTML += `<div style="color:#ef4444; margin-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${data.error}</div>`;
+                                    } else {
+                                        appendChatMessage('bot', `Error: ${data.error}`);
+                                    }
+                                } else if (data.session_id) {
+                                    currentSessionId = data.session_id;
+                                } else if (data.content !== undefined) {
+                                    rawBotResponse += data.content;
+                                    
+                                    if (!botBubbleElement) {
+                                        // Hide welcome card if present
+                                        const welcomeCard = document.getElementById('welcome-card');
+                                        if (welcomeCard) welcomeCard.style.display = 'none';
+
+                                        const chatLog = document.getElementById('chat-messages');
+                                        const messageRow = document.createElement('div');
+                                        messageRow.className = 'message-row bot';
+                                        
+                                        const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                        messageRow.innerHTML = `
+                                            <div class="message-bubble">
+                                                <div class="bot-text-content"></div>
+                                                <span class="message-time">${timeString}</span>
+                                            </div>
+                                        `;
+                                        chatLog.appendChild(messageRow);
+                                        botBubbleElement = messageRow.querySelector('.bot-text-content');
+                                    }
+                                    
+                                    botBubbleElement.innerHTML = parseMarkdown(rawBotResponse);
+                                    document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+                                }
+                            } catch (e) {
+                                console.error("Error decoding SSE stream data:", e);
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("API Call error:", err);
+                typingRow.style.display = 'none';
+                if (botBubbleElement) {
+                    botBubbleElement.innerHTML += `<div style="color:#ef4444; margin-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Connection lost.</div>`;
+                } else {
+                    appendChatMessage('bot', "Connection failed. Please make sure the Django server is running locally.");
+                }
+            } finally {
+                // Re-enable input controls
+                document.getElementById('btn-submit').disabled = false;
+                document.getElementById('chat-input').disabled = false;
+                document.getElementById('chat-input').focus();
+            }
+        }
+
+        // Handle clicking suggestions
+        function sendSuggestion(text) {
+            document.getElementById('chat-input').value = text;
+            handleChatSubmit();
+        }
+    </script>
+</body>
+</html>
