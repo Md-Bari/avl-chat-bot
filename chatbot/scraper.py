@@ -15,6 +15,39 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
+def format_extracted_media_info(name, url):
+    clean = name.replace('_', ' ').replace('-', ' ')
+    clean = re.sub(r'page\s*\d+', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\bscaled\b', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\b\d+\b', '', clean)
+    clean = re.sub(r'\s+', ' ', clean).strip(' .()')
+    
+    if not clean:
+        return ""
+        
+    lower_clean = clean.lower()
+    is_cert = 'cert' in url.lower() or any(k in lower_clean for k in ['gots', 'oeko', 'grs', 'ocs', 'rcs', 'bsci', 'sedex', 'compliance', 'audit', 'structural', 'report', 'standard', 'membership'])
+    
+    if is_cert:
+        desc = clean
+        if 'gots' in lower_clean and 'global' not in lower_clean:
+            desc += " (Global Organic Textile Standard)"
+        elif 'oeko' in lower_clean and 'tex' not in lower_clean:
+            desc += " (OEKO-TEX Standard 100)"
+        elif 'grs' in lower_clean and 'global' not in lower_clean:
+            desc += " (Global Recycled Standard)"
+        elif 'ocs' in lower_clean and 'organic' not in lower_clean:
+            desc += " (Organic Content Standard)"
+        elif 'rcs' in lower_clean and 'recycled' not in lower_clean:
+            desc += " (Recycled Claim Standard)"
+        elif 'bsci' in lower_clean and 'business' not in lower_clean:
+            desc += " (Business Social Compliance Initiative)"
+        elif 'sedex' in lower_clean and 'supplier' not in lower_clean:
+            desc += " (Supplier Ethical Data Exchange)"
+        return f"Apparels Village Limited (AVL) holds the certification / membership: {desc}."
+    else:
+        return f"Page illustration / Image: {clean}."
+
 def chunk_text(text, max_chunk_size=1200):
     paragraphs = text.split('\n')
     chunks = []
@@ -134,9 +167,11 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
                 body = soup.find('body')
                 if body:
                     text_blocks = []
+                    extra_info_extracted = set()
+
                     # Extract structure-defining tags
                     for element in body.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'td', 'th']):
-                        # Skip if part of header navigation/menu
+                        # Skip if part of header navigation, menu, or footer
                         parent_str = ""
                         p = element.parent
                         while p and p.name != 'body':
@@ -144,10 +179,40 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
                             p = p.parent
                         
                         parent_str = parent_str.lower()
-                        if 'nav' in parent_str or 'menu' in parent_str:
+                        if 'nav' in parent_str or 'menu' in parent_str or 'footer' in parent_str:
                             continue
                             
-                        txt = clean_text(element.get_text())
+                        # Get main text of this element
+                        txt = element.get_text().strip()
+                        
+                        # Check for any lightbox title or img alt inside this element or on this element
+                        extra_details = []
+                        for sub_el in [element] + list(element.find_all(True)):
+                            lb_title = sub_el.get('data-elementor-lightbox-title')
+                            if lb_title and lb_title not in txt:
+                                formatted = format_extracted_media_info(lb_title, normalized_url)
+                                if formatted and formatted not in txt and formatted not in extra_details:
+                                    extra_details.append(formatted)
+                                    extra_info_extracted.add(sub_el)
+                            
+                            if sub_el.name == 'img':
+                                alt = sub_el.get('alt')
+                                img_title = sub_el.get('title')
+                                if alt and alt not in txt:
+                                    formatted = format_extracted_media_info(alt, normalized_url)
+                                    if formatted and formatted not in txt and formatted not in extra_details:
+                                        extra_details.append(formatted)
+                                        extra_info_extracted.add(sub_el)
+                                elif img_title and img_title not in txt:
+                                    formatted = format_extracted_media_info(img_title, normalized_url)
+                                    if formatted and formatted not in txt and formatted not in extra_details:
+                                        extra_details.append(formatted)
+                                        extra_info_extracted.add(sub_el)
+                                    
+                        if extra_details:
+                            txt = f"{txt}\n" + "\n".join(extra_details)
+                            
+                        txt = clean_text(txt)
                         if txt:
                             if element.name.startswith('h'):
                                 text_blocks.append(f"\n{element.name.upper()}: {txt}")
@@ -155,6 +220,39 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
                                 text_blocks.append(f"- {txt}")
                             else:
                                 text_blocks.append(txt)
+                                
+                    # Extract remaining elements with data-elementor-lightbox-title or images that weren't captured
+                    for element in body.find_all(lambda tag: tag.get('data-elementor-lightbox-title') or tag.name == 'img'):
+                        if element in extra_info_extracted:
+                            continue
+                            
+                        # Skip if part of header navigation, menu, or footer
+                        parent_str = ""
+                        p = element.parent
+                        while p and p.name != 'body':
+                            parent_str += f" {p.get('class', '')} {p.get('id', '')}"
+                            p = p.parent
+                        
+                        parent_str = parent_str.lower()
+                        if 'nav' in parent_str or 'menu' in parent_str or 'footer' in parent_str:
+                            continue
+                            
+                        txt = ""
+                        if element.name == 'img':
+                            alt = element.get('alt')
+                            img_title = element.get('title')
+                            if alt:
+                                txt = format_extracted_media_info(alt, normalized_url)
+                            elif img_title:
+                                txt = format_extracted_media_info(img_title, normalized_url)
+                        else:
+                            lb_title = element.get('data-elementor-lightbox-title')
+                            txt = format_extracted_media_info(lb_title, normalized_url)
+                            
+                        txt = clean_text(txt)
+                        if txt:
+                            text_blocks.append(txt)
+                            extra_info_extracted.add(element)
                                 
                     text_content = "\n".join(text_blocks)
                 else:
@@ -180,7 +278,7 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
                         PageChunk.objects.create(
                             page=page_obj,
                             chunk_text=chunk,
-                            embedding_json=json.dumps(emb)
+                            embedding=emb
                         )
                 except Exception as chunk_err:
                     print(f"Failed to generate embeddings for {normalized_url}: {chunk_err}")

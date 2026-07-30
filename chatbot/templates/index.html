@@ -685,9 +685,187 @@
                 display: none; /* Hide sidebar on small tablet/mobile */
             }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(4, 5, 11, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 40px rgba(99, 102, 241, 0.1);
+            animation: modal-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes modal-slide-up {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .logo-badge {
+            font-size: 32px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        .modal-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-header p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-group input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            font-family: var(--font-family);
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: rgba(99, 102, 241, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+        }
+
+        .modal-actions {
+            margin-top: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-primary-action {
+            background: var(--primary-gradient);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px;
+            font-family: var(--font-family);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-primary-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-secondary-action {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            font-family: var(--font-family);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary-action:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            border-color: var(--card-border-hover);
+        }
     </style>
 </head>
 <body>
+
+    <!-- User Registration Modal -->
+    <div id="user-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <i class="fa-solid fa-robot logo-badge"></i>
+                <h2>Welcome to AVL Assistant</h2>
+                <p>To start your conversation, please introduce yourself or proceed anonymously.</p>
+            </div>
+            <form id="user-form" onsubmit="submitUserForm(event)">
+                <div class="input-group">
+                    <label for="user-name-input"><i class="fa-regular fa-user"></i> Full Name</label>
+                    <input type="text" id="user-name-input" placeholder="e.g. John Doe">
+                </div>
+                <div class="input-group">
+                    <label for="user-email-input"><i class="fa-regular fa-envelope"></i> Email Address</label>
+                    <input type="email" id="user-email-input" placeholder="e.g. john@example.com">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary-action">
+                        Start Chatting <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <button type="button" class="btn-secondary-action" onclick="continueAsGuest()">
+                        Continue as Guest
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Ambient glowing backgrounds -->
     <div class="ambient-blob blob-1"></div>
@@ -726,6 +904,16 @@
                     </div>
                     <button id="btn-scrape-trigger" class="btn-scrape">
                         <i class="fa-solid fa-arrows-rotate"></i> Re-scrape Website
+                    </button>
+                </div>
+                
+                <!-- Session Manager Widget -->
+                <div class="widget">
+                    <div class="widget-title">
+                        <i class="fa-solid fa-comments"></i> Chat Session
+                    </div>
+                    <button onclick="resetSession()" class="btn-scrape" style="border-color: rgba(239, 68, 68, 0.3);">
+                        <i class="fa-solid fa-trash-can" style="color: #f87171; margin-right: 6px;"></i> Start New Chat
                     </button>
                 </div>
                 
@@ -768,7 +956,7 @@
             <header class="chat-header">
                 <div class="chat-header-info">
                     <h2>Customer Assistant</h2>
-                    <p>AI Agent powered by AVL website data</p>
+                    <p id="chat-header-user-status">AI Agent powered by AVL website data</p>
                 </div>
                 <div class="header-actions">
                     <a href="/api/docs/" class="btn-link-swagger" target="_blank">
@@ -828,12 +1016,142 @@
     <script>
         let currentSessionId = '';
         let isScrapingActive = false;
+        let userName = '';
+        let userEmail = '';
+
+        // Create session on the backend
+        async function createSession(name, email) {
+            try {
+                // Disable modal buttons to prevent double click
+                const submitBtn = document.querySelector('.btn-primary-action');
+                const guestBtn = document.querySelector('.btn-secondary-action');
+                if (submitBtn) submitBtn.disabled = true;
+                if (guestBtn) guestBtn.disabled = true;
+                
+                const response = await fetch('/api/chat/session/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, email: email })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to initialize session on backend");
+                }
+
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                userName = data.user_name;
+                
+                // Save to localStorage
+                localStorage.setItem('chat_session_id', data.session_id);
+                
+                hideUserModal();
+                
+                // Display friendly welcome message in chat log
+                setTimeout(() => {
+                    appendChatMessage('bot', `Hello **${userName}**! Welcome to the AVL Group AI Assistant. I can help you with details about our factory capacities, machinery specs, certifications, or custom woven/knit fabrics. How can I help you today?`);
+                }, 600);
+            } catch (err) {
+                console.error("Error creating session:", err);
+                alert("Failed to start session. Please try again.");
+                
+                // Re-enable modal buttons
+                const submitBtn = document.querySelector('.btn-primary-action');
+                const guestBtn = document.querySelector('.btn-secondary-action');
+                if (submitBtn) submitBtn.disabled = false;
+                if (guestBtn) guestBtn.disabled = false;
+            }
+        }
+
+        // Submit User Details Form
+        function submitUserForm(e) {
+            if (e) e.preventDefault();
+            const nameVal = document.getElementById('user-name-input').value.trim();
+            const emailVal = document.getElementById('user-email-input').value.trim();
+
+            if (!nameVal || !emailVal) {
+                alert("Please fill in both Name and Email, or click 'Continue as Guest'.");
+                return;
+            }
+
+            createSession(nameVal, emailVal);
+        }
+
+        // Continue as Guest
+        function continueAsGuest() {
+            createSession('Guest', '');
+        }
+
+        // Hide Modal
+        function hideUserModal() {
+            const modal = document.getElementById('user-modal');
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.getElementById('chat-input').focus();
+            }, 400);
+            document.getElementById('chat-header-user-status').innerHTML = `AI Agent powered by AVL website data &bull; Chatting as <span style="color:#a855f7; font-weight:600;">${userName}</span>`;
+        }
+
+        // Restore existing chat session if present in localStorage
+        async function restoreSession() {
+            const savedSessionId = localStorage.getItem('chat_session_id');
+            if (!savedSessionId) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/chat/?session_id=${savedSessionId}`);
+                if (!response.ok) {
+                    throw new Error("Session expired or not found");
+                }
+                
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                userName = data.user_name;
+                
+                // Hide modal immediately
+                const modal = document.getElementById('user-modal');
+                modal.style.display = 'none';
+                
+                // Update header status
+                document.getElementById('chat-header-user-status').innerHTML = `AI Agent powered by AVL website data &bull; Chatting as <span style="color:#a855f7; font-weight:600;">${userName}</span>`;
+                
+                // Render chat history
+                if (data.chat_details && data.chat_details.length > 0) {
+                    // Hide welcome card
+                    const welcomeCard = document.getElementById('welcome-card');
+                    if (welcomeCard) welcomeCard.style.display = 'none';
+                    
+                    data.chat_details.forEach(msg => {
+                        appendChatMessage(msg.role === 'user' ? 'user' : 'bot', msg.content);
+                    });
+                } else {
+                    // Show a welcome back greeting if session exists but history is empty
+                    appendChatMessage('bot', `Welcome back, **${userName}**! I'm here to answer any questions you have about AVL Group. How can I assist you today?`);
+                }
+            } catch (err) {
+                console.warn("Could not restore session:", err);
+                localStorage.removeItem('chat_session_id');
+            }
+        }
+
+        // Reset session (Start New Chat)
+        function resetSession() {
+            if (confirm("Are you sure you want to start a new chat? Your current conversation history will be cleared from this screen.")) {
+                localStorage.removeItem('chat_session_id');
+                window.location.reload();
+            }
+        }
 
         // On Page Load
         window.addEventListener('DOMContentLoaded', () => {
             fetchDatabaseStatus();
             // Poll database status periodically
             setInterval(fetchDatabaseStatus, 6000);
+            
+            // Try to restore previous session
+            restoreSession();
         });
 
         // Fetch DB Status
@@ -1031,9 +1349,6 @@
             typingRow.style.display = 'flex';
             document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
 
-            let botBubbleElement = null;
-            let rawBotResponse = "";
-
             try {
                 const response = await fetch('/api/chat/', {
                     method: 'POST',
@@ -1044,8 +1359,10 @@
                     })
                 });
                 
+                // Hide loader
+                typingRow.style.display = 'none';
+
                 if (!response.ok) {
-                    typingRow.style.display = 'none';
                     const errText = await response.text();
                     let errMsg = errText;
                     try { errMsg = JSON.parse(errText).error || errText; } catch(e){}
@@ -1053,75 +1370,15 @@
                     return;
                 }
                 
-                // Hide loader once stream starts receiving
-                typingRow.style.display = 'none';
+                const data = await response.json();
                 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder("utf-8");
-                let buffer = "";
+                // Render bot response from data.data.answer
+                appendChatMessage('bot', data.data.answer);
                 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop(); // Hold onto partial line
-                    
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        if (trimmed.startsWith('data:')) {
-                            const jsonStr = trimmed.substring(5).trim();
-                            try {
-                                const data = JSON.parse(jsonStr);
-                                if (data.error) {
-                                    if (botBubbleElement) {
-                                        botBubbleElement.innerHTML += `<div style="color:#ef4444; margin-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${data.error}</div>`;
-                                    } else {
-                                        appendChatMessage('bot', `Error: ${data.error}`);
-                                    }
-                                } else if (data.session_id) {
-                                    currentSessionId = data.session_id;
-                                } else if (data.content !== undefined) {
-                                    rawBotResponse += data.content;
-                                    
-                                    if (!botBubbleElement) {
-                                        // Hide welcome card if present
-                                        const welcomeCard = document.getElementById('welcome-card');
-                                        if (welcomeCard) welcomeCard.style.display = 'none';
-
-                                        const chatLog = document.getElementById('chat-messages');
-                                        const messageRow = document.createElement('div');
-                                        messageRow.className = 'message-row bot';
-                                        
-                                        const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                        messageRow.innerHTML = `
-                                            <div class="message-bubble">
-                                                <div class="bot-text-content"></div>
-                                                <span class="message-time">${timeString}</span>
-                                            </div>
-                                        `;
-                                        chatLog.appendChild(messageRow);
-                                        botBubbleElement = messageRow.querySelector('.bot-text-content');
-                                    }
-                                    
-                                    botBubbleElement.innerHTML = parseMarkdown(rawBotResponse);
-                                    document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-                                }
-                            } catch (e) {
-                                console.error("Error decoding SSE stream data:", e);
-                            }
-                        }
-                    }
-                }
             } catch (err) {
                 console.error("API Call error:", err);
                 typingRow.style.display = 'none';
-                if (botBubbleElement) {
-                    botBubbleElement.innerHTML += `<div style="color:#ef4444; margin-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Connection lost.</div>`;
-                } else {
-                    appendChatMessage('bot', "Connection failed. Please make sure the Django server is running locally.");
-                }
+                appendChatMessage('bot', "Connection failed. Please make sure the Django server is running locally.");
             } finally {
                 // Re-enable input controls
                 document.getElementById('btn-submit').disabled = false;

@@ -1,0 +1,51 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    command: postgres -p 5436
+    environment:
+      POSTGRES_DB: avl_chatbot
+      POSTGRES_USER: chatbot_user
+      POSTGRES_PASSWORD: chatbot_password
+    ports:
+      - "5436:5436"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@avl.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "5055:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    volumes:
+      - .:/app
+      - /app/venv
+      - /app/.venv
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=db
+      - DB_PORT=5436
+      - DB_NAME=avl_chatbot
+      - DB_USER=chatbot_user
+      - DB_PASSWORD=chatbot_password
+    depends_on:
+      - db
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8005
+
+volumes:
+  pgdata:

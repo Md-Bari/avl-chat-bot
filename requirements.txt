@@ -1,0 +1,9 @@
+Django>=5.0
+django-cors-headers
+djangorestframework
+drf-spectacular
+openai
+beautifulsoup4
+python-dotenv
+psycopg2-binary>=2.9
+pgvector>=0.2.0

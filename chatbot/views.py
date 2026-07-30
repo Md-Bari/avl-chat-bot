@@ -12,8 +12,10 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from openai import OpenAI
 
-from chatbot.models import ScrapedPage, ChatSession, ChatMessage, PageChunk
+from chatbot.models import ScrapedPage, ChatSession, ChatMessage, PageChunk, ChatUser, UserChatSession
 from chatbot.serializers import (
+    SessionCreateRequestSerializer,
+    SessionCreateResponseSerializer,
     ChatRequestSerializer,
     ChatResponseSerializer,
     ScrapedPageSerializer,
@@ -46,32 +48,23 @@ def calculate_cosine_similarity(vec1, vec2):
         return 0.0
     return dot_product / (magnitude_1 * magnitude_2)
 
-def retrieve_relevant_context(query_text, top_k=4):
+def retrieve_relevant_context(query_text, top_k=8):
     try:
         query_vector = get_embedding(query_text)
     except Exception as e:
         print(f"Failed to generate query embedding: {e}")
         return ""
         
-    chunks = PageChunk.objects.all()
-    if not chunks.exists():
+    from pgvector.django import CosineDistance
+    top_chunks = PageChunk.objects.order_by(
+        CosineDistance('embedding', query_vector)
+    )[:top_k]
+    
+    if not top_chunks.exists():
         return ""
         
-    chunk_scores = []
-    for chunk in chunks:
-        try:
-            chunk_vector = json.loads(chunk.embedding_json)
-            score = calculate_cosine_similarity(query_vector, chunk_vector)
-            chunk_scores.append((chunk, score))
-        except Exception:
-            continue
-            
-    # Sort by similarity score descending
-    chunk_scores.sort(key=lambda x: x[1], reverse=True)
-    top_chunks = chunk_scores[:top_k]
-    
     context_parts = []
-    for chunk, score in top_chunks:
+    for chunk in top_chunks:
         context_parts.append(
             f"Source URL: {chunk.page.url}\n"
             f"Page Title: {chunk.page.title}\n"
@@ -81,6 +74,39 @@ def retrieve_relevant_context(query_text, top_k=4):
 
 class IndexView(TemplateView):
     template_name = 'index.html'
+
+class ChatSessionCreateView(APIView):
+    @extend_schema(
+        request=SessionCreateRequestSerializer,
+        responses={201: SessionCreateResponseSerializer},
+        description="Create a new user profile and initialize a chat session ID. Accepts optional name and email, or creates a Guest session."
+    )
+    def post(self, request):
+        serializer = SessionCreateRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        name = serializer.validated_data.get('name')
+        email = serializer.validated_data.get('email')
+        
+        # Generate session_id
+        session_id = uuid.uuid4().hex
+        
+        # Find or create user
+        if email:
+            chat_user = ChatUser.objects.filter(email=email).first()
+            if not chat_user:
+                chat_user = ChatUser.objects.create(name=name or "Guest", email=email)
+        else:
+            chat_user = ChatUser.objects.create(name=name or "Guest")
+            
+        UserChatSession.objects.create(session_id=session_id, user=chat_user)
+        
+        return Response({
+            "session_id": session_id,
+            "user_id": str(chat_user.user_id),
+            "user_name": chat_user.name
+        }, status=status.HTTP_201_CREATED)
 
 class ChatView(APIView):
     @extend_schema(
@@ -94,16 +120,19 @@ class ChatView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         user_message = serializer.validated_data['message']
-        session_id = serializer.validated_data.get('session_id')
+        session_id = serializer.validated_data['session_id']
         
-        # If no session ID is supplied or found, create a new session
-        if not session_id:
-            session_id = uuid.uuid4().hex
+        # Look up session
+        chat_session = UserChatSession.objects.filter(session_id=session_id).first()
+        if not chat_session:
+            return Response({"error": "Session not found. Please register a session first."}, status=status.HTTP_404_NOT_FOUND)
             
-        session, created = ChatSession.objects.get_or_create(session_id=session_id)
+        chat_user = chat_session.user
+        user_display_name = chat_user.name if chat_user else "Guest"
         
-        # Fetch conversation history (limit to last 10 messages for context efficiency)
-        history_msgs = ChatMessage.objects.filter(session=session).order_by('created_at')[:10]
+        # Fetch conversation history from JSONB chat_details (limit to last 10 messages)
+        history_msgs = chat_session.chat_details or []
+        history_msgs = history_msgs[-10:]
         
         # Retrieve relevant context from DB chunks (RAG)
         context = retrieve_relevant_context(user_message)
@@ -112,6 +141,7 @@ class ChatView(APIView):
         system_instruction = (
             "You are the professional AI Assistant for AVL Group (Apparels Village Limited), "
             "a premier 100% export-oriented apparel manufacturer in Savar, Dhaka, Bangladesh.\n"
+            f"You are currently chatting with {user_display_name}.\n"
             "Your objective is to help potential buyers, clients, and partners by answering their questions "
             "accurately, professionally, and helpfully using the official website information provided below.\n\n"
             "GUIDELINES:\n"
@@ -150,7 +180,7 @@ class ChatView(APIView):
         
         # Add conversation history
         for msg in history_msgs:
-            messages.append({"role": msg.role, "content": msg.content})
+            messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
             
         # Add current user message
         messages.append({"role": "user", "content": user_message})
@@ -163,35 +193,60 @@ class ChatView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
-        def stream_generator():
-            # Yield session_id first as metadata
-            yield f"data: {json.dumps({'session_id': session_id})}\n\n"
+        try:
+            client = OpenAI(api_key=api_key)
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.2,
+                stream=False
+            )
             
-            try:
-                client = OpenAI(api_key=api_key)
-                completion = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
-                    temperature=0.2,
-                    stream=True
-                )
-                
-                bot_response_parts = []
-                for chunk in completion:
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        bot_response_parts.append(content)
-                        yield f"data: {json.dumps({'content': content})}\n\n"
-                        
-                # Save message logs after full text is received
-                full_bot_response = "".join(bot_response_parts)
-                ChatMessage.objects.create(session=session, role='user', content=user_message)
-                ChatMessage.objects.create(session=session, role='assistant', content=full_bot_response)
-                
-            except Exception as e:
-                yield f"data: {json.dumps({'error': f'OpenAI call failed: {str(e)}'})}\n\n"
+            full_bot_response = completion.choices[0].message.content
+            
+            # Save message logs after full text is received
+            if not chat_session.chat_details:
+                chat_session.chat_details = []
+            chat_session.chat_details.append({"role": "user", "content": user_message})
+            chat_session.chat_details.append({"role": "assistant", "content": full_bot_response})
+            chat_session.save()
+            
+            user_id_str = str(chat_user.user_id) if chat_user else None
+            
+            return Response({
+                "success": True,
+                "message": "Message processed successfully.",
+                "data": {
+                    "session_id": session_id,
+                    "user_id": user_id_str,
+                    "question_type": "GENERAL",
+                    "answer": full_bot_response,
+                    "messages": chat_session.chat_details
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": f"OpenAI call failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        return StreamingHttpResponse(stream_generator(), content_type='text/event-stream')
+    def get(self, request):
+        session_id = request.query_params.get('session_id')
+        if not session_id:
+            return Response({"error": "session_id query parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        chat_session = UserChatSession.objects.filter(session_id=session_id).first()
+        if not chat_session:
+            return Response({"error": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        user_name = chat_session.user.name if chat_session.user else "Guest"
+        
+        return Response({
+            "session_id": chat_session.session_id,
+            "user_name": user_name,
+            "chat_details": chat_session.chat_details or []
+        }, status=status.HTTP_200_OK)
 
 class TriggerScrapeView(APIView):
     @extend_schema(
