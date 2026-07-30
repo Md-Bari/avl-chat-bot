@@ -496,8 +496,9 @@ info.avl@faiyazgroup.com avl@faiyaz-group.com
 H3: Call Us
 +880-1726-958349+880-01708464844
 
-H3: Address
-37, Khagan Birulia, Savar, Dhaka-1340, Bangladesh Corporate : Level 5, Axis Delvistaa, Plot- 7/1, Block A, Aurongozeb Road, Mohammadpur, Dhaka 1207, Bangladesh
+H3: Factory Address and Corporate Office Address
+Factory Address: 37, Khagan Birulia, Savar, Dhaka-1340, Bangladesh.
+Corporate Office Address: Level 5, Axis Delvistaa, Plot- 7/1, Block A, Aurongozeb Road, Mohammadpur, Dhaka 1207, Bangladesh.
 
 H3: Hotline
 +88 02 9101349 +88 02 9101351 +88 017 269 58 349 +88 017 084 64 844

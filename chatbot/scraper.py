@@ -55,18 +55,24 @@ def chunk_text(text, max_chunk_size=1200):
     current_chunk = []
     current_len = 0
     
+    heading_pattern = re.compile(r'^(H\d:|#+)\s+', re.IGNORECASE)
+    
     for para in paragraphs:
         para = para.strip()
         if not para:
             continue
         
         para_len = len(para)
-        if para_len > max_chunk_size:
+        is_heading = bool(heading_pattern.match(para))
+        
+        # Split chunk if we encounter a new header and the current chunk has substantial content
+        if (is_heading and current_len > 150) or (current_len + para_len > max_chunk_size):
             if current_chunk:
                 chunks.append("\n".join(current_chunk))
                 current_chunk = []
                 current_len = 0
-            
+        
+        if para_len > max_chunk_size:
             # Split sentences
             sentences = re.split(r'(?<=[.!?])\s+', para)
             for sentence in sentences:
@@ -80,14 +86,8 @@ def chunk_text(text, max_chunk_size=1200):
                     current_chunk.append(sentence)
                     current_len += sentence_len + (1 if current_len > 0 else 0)
         else:
-            if current_len + para_len > max_chunk_size:
-                if current_chunk:
-                    chunks.append("\n".join(current_chunk))
-                current_chunk = [para]
-                current_len = para_len
-            else:
-                current_chunk.append(para)
-                current_len += para_len + (1 if current_len > 0 else 0)
+            current_chunk.append(para)
+            current_len += para_len + (1 if current_len > 0 else 0)
                 
     if current_chunk:
         chunks.append("\n".join(current_chunk))

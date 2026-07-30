@@ -48,7 +48,7 @@ def calculate_cosine_similarity(vec1, vec2):
         return 0.0
     return dot_product / (magnitude_1 * magnitude_2)
 
-def retrieve_relevant_context(query_text, top_k=5):
+def retrieve_relevant_context(query_text, top_k=8):
     try:
         query_vector = get_embedding(query_text)
     except Exception as e:
