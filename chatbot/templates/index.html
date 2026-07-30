@@ -1222,9 +1222,9 @@
             
             // Format tables
             const lines = html.split('\n');
+            let processedLines = [];
             let inTable = false;
-            let tableHtml = '';
-            let rows = [];
+            let tableRows = [];
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -1232,40 +1232,49 @@
                 if (line.startsWith('|')) {
                     if (!inTable) {
                         inTable = true;
-                        rows = [];
+                        tableRows = [];
                     }
-                    rows.push(line);
+                    tableRows.push(line);
                 } else {
                     if (inTable) {
-                        // Render full table
-                        tableHtml = renderMarkdownTable(rows);
-                        html = html.replace(rows.join('\n'), tableHtml);
+                        processedLines.push(renderMarkdownTable(tableRows));
                         inTable = false;
                     }
+                    processedLines.push(lines[i]);
                 }
             }
             if (inTable) {
-                tableHtml = renderMarkdownTable(rows);
-                html = html.replace(rows.join('\n'), tableHtml);
+                processedLines.push(renderMarkdownTable(tableRows));
             }
 
+            let joined = processedLines.join('\n');
+
             // Headers
-            html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-            html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+            joined = joined.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+            joined = joined.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+            joined = joined.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
             
             // Bold
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            joined = joined.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             
-            // Bullet points
-            html = html.replace(/^\s*-\s+(.*?)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
-            // Clean consecutive lists
-            html = html.replace(/<\/ul>\s*<ul>/g, '');
+            // Bullet points (grouping consecutive <li> elements)
+            joined = joined.replace(/^\s*[-*]\s+(.*?)$/gm, '<li>$1</li>');
+            joined = joined.replace(/(<li>.*?<\/li>)+/gs, function(match) {
+                return '<ul>' + match + '</ul>';
+            });
 
-            // Line breaks
-            html = html.replace(/\n/g, '<br>');
-            return html;
+            // Split into blocks by double newline to wrap paragraphs nicely without adding random <br> tags to lists/tables
+            const blocks = joined.split(/\n{2,}/);
+            const parsedBlocks = blocks.map(block => {
+                const trimmed = block.trim();
+                if (!trimmed) return '';
+                if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<ol') || trimmed.startsWith('<table')) {
+                    return trimmed;
+                }
+                return '<p>' + trimmed.replace(/\n/g, '<br>') + '</p>';
+            });
+
+            return parsedBlocks.filter(b => b !== '').join('');
         }
 
         // Helper to render MD tables to HTML tables

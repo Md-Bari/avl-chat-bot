@@ -48,7 +48,7 @@ def calculate_cosine_similarity(vec1, vec2):
         return 0.0
     return dot_product / (magnitude_1 * magnitude_2)
 
-def retrieve_relevant_context(query_text, top_k=8):
+def retrieve_relevant_context(query_text, top_k=5):
     try:
         query_vector = get_embedding(query_text)
     except Exception as e:
@@ -151,7 +151,11 @@ class ChatView(APIView):
             "2. If you don't know or if the context doesn't contain the answer, politely say so, and "
             "suggest they contact the AVL Group team directly by providing the email (avl@faiyaz-group.com) "
             "or phone numbers / hotlines listed in the context.\n"
-            "3. Keep your answers professional, direct, and well-structured. Use markdown bullet points and tables where appropriate.\n\n"
+            "3. Keep your answers professional, direct, and well-structured. Make your responses highly concise, compact, and straight to the point. Avoid verbose fillers, long introductory paragraphs, or duplicate concluding sentences. For lists or collections of items, do NOT write long vertical bulleted lists. Instead, organize and summarize them into cohesive, natural paragraphs, separating items with commas. This makes the answer much easier to read and understand on mobile and other devices.\n"
+            "4. ANSWER LIKE A HUMAN: Speak in a natural, warm, and conversational tone, like a friendly customer representative of AVL Group. "
+            "Do NOT use robotic RAG disclaimer phrases such as 'Based on the provided context...', 'According to the database...', 'As stated on the website...', "
+            "or 'Based on the information provided...'. Simply state the facts directly and conversationally as if you naturally know them. "
+            "Do NOT over-apologize or use rigid robotic transitions (e.g., 'I apologize for the confusion'). Answer smoothly and directly.\n\n"
             "WEBSITE CONTEXT:\n"
         )
         

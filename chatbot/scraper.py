@@ -1,5 +1,6 @@
 import urllib.request
 import urllib.parse
+import os
 from bs4 import BeautifulSoup
 import re
 import time
@@ -119,6 +120,78 @@ def is_valid_url(url, base_domain):
         return False
         
     return True
+
+def export_pages_to_markdown():
+    """
+    Reads all ScrapedPage entries from the database and writes them to scraped_content.md in the project root.
+    """
+    md_path = os.path.join(settings.BASE_DIR, 'scraped_content.md')
+    pages = ScrapedPage.objects.all().order_by('url')
+    
+    print(f"Exporting {pages.count()} pages to {md_path}...")
+    with open(md_path, 'w', encoding='utf-8') as f:
+        for page in pages:
+            f.write(f'<!-- PAGE_START url="{page.url}" title="{page.title}" -->\n')
+            f.write(f'# {page.title}\n\n')
+            f.write(f'{page.content}\n')
+            f.write('<!-- PAGE_END -->\n\n')
+    print("Export complete.")
+
+def import_markdown_to_db():
+    """
+    Reads scraped_content.md, parses the pages, creates semantic chunks, generates vector embeddings,
+    and stores them in the PostgreSQL PageChunk table.
+    """
+    md_path = os.path.join(settings.BASE_DIR, 'scraped_content.md')
+    if not os.path.exists(md_path):
+        print(f"Error: {md_path} does not exist.")
+        return 0
+        
+    print(f"Importing and embedding pages from {md_path}...")
+    with open(md_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+        
+    pattern = re.compile(
+        r'<!--\s*PAGE_START\s+url="([^"]+)"\s+title="([^"]*)"\s*-->([\s\S]*?)<!--\s*PAGE_END\s*-->',
+        re.IGNORECASE
+    )
+    
+    pages_imported = 0
+    matches = list(pattern.finditer(content))
+    
+    for match in matches:
+        url = match.group(1)
+        title = match.group(2)
+        page_content = match.group(3).strip()
+        
+        # Save or update ScrapedPage model
+        page_obj, created = ScrapedPage.objects.update_or_create(
+            url=url,
+            defaults={
+                'title': title or url,
+                'content': page_content
+            }
+        )
+        
+        # Generate new chunks and embeddings
+        PageChunk.objects.filter(page=page_obj).delete()
+        chunks = chunk_text(page_content)
+        print(f"Generating embeddings for '{title or url}' ({len(chunks)} chunks)...")
+        for chunk in chunks:
+            try:
+                emb = get_embedding(chunk)
+                PageChunk.objects.create(
+                    page=page_obj,
+                    chunk_text=chunk,
+                    embedding=emb
+                )
+            except Exception as e:
+                print(f"Failed to generate embedding for chunk in {url}: {e}")
+                
+        pages_imported += 1
+        
+    print(f"Import complete. Embedded {pages_imported} pages.")
+    return pages_imported
 
 def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
     """
@@ -268,21 +341,6 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
                 )
                 scraped_count += 1
                 
-                # Chunk text and generate embeddings
-                try:
-                    PageChunk.objects.filter(page=page_obj).delete()
-                    chunks = chunk_text(text_content)
-                    print(f"Chunked into {len(chunks)} sections. Generating embeddings...")
-                    for chunk in chunks:
-                        emb = get_embedding(chunk)
-                        PageChunk.objects.create(
-                            page=page_obj,
-                            chunk_text=chunk,
-                            embedding=emb
-                        )
-                except Exception as chunk_err:
-                    print(f"Failed to generate embeddings for {normalized_url}: {chunk_err}")
-                
                 # Discover links
                 for link in soup.find_all('a', href=True):
                     full_link = urllib.parse.urljoin(normalized_url, link['href'])
@@ -299,5 +357,12 @@ def scrape_avl_site(start_url="https://avl.com.bd", delay=0.5):
             logger.error(f"Failed to scrape {normalized_url}: {e}", exc_info=True)
             
     print(f"Scraping complete. Total pages saved: {scraped_count}")
+    
+    # Step 1: Export all crawled text to scraped_content.md
+    export_pages_to_markdown()
+    
+    # Step 2: Import from markdown file, chunk, embed, and store in PostgreSQL
+    import_markdown_to_db()
+    
     return scraped_count
 
