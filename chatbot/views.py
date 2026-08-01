@@ -2,6 +2,8 @@ import uuid
 import threading
 import math
 import json
+from datetime import timedelta
+from django.utils import timezone
 from django.conf import settings
 from django.shortcuts import render
 from django.views.generic import TemplateView
@@ -127,6 +129,11 @@ class ChatView(APIView):
         if not chat_session:
             return Response({"error": "Session not found. Please register a session first."}, status=status.HTTP_404_NOT_FOUND)
             
+        # Check if session has expired (inactive for 10 minutes)
+        if timezone.now() - chat_session.updated_at > timedelta(minutes=10):
+            chat_session.delete()
+            return Response({"error": "Session has expired due to 10 minutes of inactivity. Please start a new chat."}, status=status.HTTP_404_NOT_FOUND)
+            
         chat_user = chat_session.user
         user_display_name = chat_user.name if chat_user else "Guest"
         
@@ -151,7 +158,7 @@ class ChatView(APIView):
             "2. If you don't know or if the context doesn't contain the answer, politely say so, and "
             "suggest they contact the AVL Group team directly by providing the email (avl@faiyaz-group.com) "
             "or phone numbers / hotlines listed in the context.\n"
-            "3. Keep your answers professional, direct, and well-structured. Make your responses highly concise, compact, and straight to the point. Avoid verbose fillers, long introductory paragraphs, or duplicate concluding sentences. For lists or collections of items, do NOT write long vertical bulleted lists. Instead, organize and summarize them into cohesive, natural paragraphs, separating items with commas. This makes the answer much easier to read and understand on mobile and other devices.\n"
+            "3. Keep your answers professional, direct, and well-structured. Make your responses highly concise, compact, and straight to the point. Avoid verbose fillers, long introductory paragraphs, or duplicate concluding sentences. Under NO circumstances should you output bullet points, numbered lists, or vertical list formatting. If the information contains a list of features, fabrics, services, machines, or specifications, you MUST summarize and write them into a single cohesive, natural paragraph, separating the items with commas. This makes the answer much easier to read and understand on mobile and other devices.\n"
             "4. ANSWER LIKE A HUMAN: Speak in a natural, warm, and conversational tone, like a friendly customer representative of AVL Group. "
             "Do NOT use robotic RAG disclaimer phrases such as 'Based on the provided context...', 'According to the database...', 'As stated on the website...', "
             "or 'Based on the information provided...'. Simply state the facts directly and conversationally as if you naturally know them. "
@@ -243,6 +250,14 @@ class ChatView(APIView):
         chat_session = UserChatSession.objects.filter(session_id=session_id).first()
         if not chat_session:
             return Response({"error": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check if session has expired (inactive for 10 minutes)
+        if timezone.now() - chat_session.updated_at > timedelta(minutes=10):
+            chat_session.delete()
+            return Response({"error": "Session has expired due to 10 minutes of inactivity."}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Update updated_at because user is active now
+        chat_session.save()
             
         user_name = chat_session.user.name if chat_session.user else "Guest"
         
